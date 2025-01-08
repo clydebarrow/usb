@@ -1,0 +1,101 @@
+#ifndef _ARM_DEF_H
+#define _ARM_DEF_H
+/*Definitions related to arm jtag interface*/
+
+/*IR commands */
+#define IR_COMM_EXTEST 	0b0000
+#define IR_COMM_SCANN	0b0010
+#define IR_COMM_SAMPLE	0b0011
+#define IR_COMM_RESTART 0b0100
+#define IR_COMM_CLAMP	0b0101
+#define IR_COMM_HIGHZ	0b0111
+#define IR_COMM_CLAMPZ	0b1001
+#define IR_COMM_INTEST  0b1100
+#define IR_COMM_IDCODE	0b1110
+#define IR_COMM_BYPASS  0b1111
+
+/*Registers*/
+
+#define ARM_R0	0x0
+#define ARM_R1	0x1
+#define ARM_R2	0x2
+#define ARM_R3	0x3
+#define ARM_R4	0x4
+#define ARM_R5	0x5
+#define ARM_R6	0x6
+#define ARM_R7	0x7
+#define ARM_R8	0x8
+#define ARM_R9	0x9
+#define ARM_R10	0xA
+#define ARM_R11	0xB
+#define ARM_R12	0xC
+#define ARM_R13	0xD
+#define ARM_R14	0xE
+#define ARM_PC	0xF
+#define ARM_CPSR 0x10
+
+
+/*SCAN Chains*/
+#define SCAN_CHAIN_0	0
+#define SCAN_CHAIN_1	1
+#define SCAN_CHAIN_2	2
+
+/*ARM Instructions*/
+#define ARM_INSTR_NOP	0xE1A00000
+#define ARM_INSTR_LDMIA	0xE89E0000
+#define ARM_INSTR_LDMIA14	0xE89E4000
+#define ARM_INSTR_STMIAR14	0xE88E0000
+#define ARM_INSTR_STRR		0xE58E0000
+#define ARM_INSTR_LDRR		0xE59E0000
+#define ARM_INSTR_LDRR1R0	0xE4901004
+#define ARM_INSTR_READCPSR	0xE10F0000
+#define ARM_INSTR_WRITECPSR	0xE12FF000
+#define ARM_INSTR_LDRB		0xE5D01000
+#define ARM_INSTR_STRB		0xE5C01000
+#define ARM_INSTR_LDR		0xE5B01000
+#define ARM_INSTR_STR		0xE5801000
+
+
+/*Defines for CPSR Register*/
+#define ARM_USER_MODE		0x10
+#define ARM_FIQ_MODE		0x11
+#define ARM_IRQ_MODE		0x12
+#define ARM_SUPERVISOR_MODE	0x13
+#define ARM_ABORT_MODE		0x17
+#define ARM_UNDEF_MODE		0x1B
+#define ARM_SYSTEM_MODE		0x1F
+#define ARM_FLSH_PROGMODE	0x200000D3
+
+
+
+
+
+/*ICEBreaker Registers*/
+#define ICEBREAK_REG_DEBSTS 0x01
+#define ICEBREAK_REG_DEBCTL 0x00
+#define ICEBREAK_REG_DEBCOMS	0x04
+#define ICEBREAK_REG_DEBCOMSDATA 0x05
+
+#define ICEBREAK_REG_WP0_ADVALUE 0x08
+#define ICEBREAK_REG_WP0_ADMASK  0x09
+#define ICEBREAK_REG_WP0_DVALUE 0x0A
+#define ICEBREAK_REG_WP0_DMASK 0x0B
+#define ICEBREAK_REG_WP0_CTRLVALUE 0x0C
+#define ICEBREAK_REG_WP0_CTRLMASK 0x0D
+
+#define ICEBREAK_REG_WP1_ADVALUE 0x10
+#define ICEBREAK_REG_WP1_ADMASK  0x11
+#define ICEBREAK_REG_WP1_DVALUE 0x12
+#define ICEBREAK_REG_WP1_DMASK 0x13
+#define ICEBREAK_REG_WP1_CTRLVALUE 0x14
+#define ICEBREAK_REG_WP1_CTRLMASK 0x15
+
+
+#define ICEBREAK_REG_DBGACK_MSK 0x09
+
+
+
+
+#define ARM_MEMACC_TIMEOUT	1000
+#define MAX_PACKET_LEN		52
+#endif

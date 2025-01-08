@@ -1,0 +1,160 @@
+// C2 Registers useful for flashing & debugging (c8051F330.h defines 
+the rest)
+// To access 0x00-0x02, I've only used C2_ReadReg & C2_WriteReg.
+// To access 0x20-0x33, you must used C2_ReadRegBlock & 
+C2_WriteRegBlock.
+// To access 0x80-0xFF, you can use either method.
+#define DEVICEID 0x00   // fixed device ID value
+#define REVID    0x01   // fixed revision ID (I've only seen 0x00)
+#define FPCTL    0x02   // Flash Programming Control (also for 
+debugging)
+#define PCL_COPY 0x20   // copy of Program Counter, low byte, while 
+debugging
+#define PCH_COPY 0x21   // copy of Program Counter, high byte, while 
+debugging
+#define PSW_COPY 0x23   // copy of PSW while debugging
+#define R0_COPY  0x24   // copy of R0 (bank 0) while debugging
+#define R1_COPY  0x25   // copy of R1 (bank 0) while debugging
+#define R2_COPY  0x26   // copy of R2 (bank 0) while debugging
+#define XRAMD    0x84   // XRAM Data (address auto-increments)
+#define BRKP0L   0x85   // Breakpoint 0, low byte
+#define BRKP0H   0x86   // Breakpoint 0, high byte
+#define BRKP1L   0xAB   // Breakpoint 1, low byte
+#define BRKP1H   0xAC   // Breakpoint 1, high byte
+#define XRAMAL   0xAD   // XRAM Address, low byte (address 
+auto-increments)
+#define FPDAT    0xB4   // Flash Programming Data (also for debugging)
+#define XRAMAH   0xC7   // XRAM Address, high byte (address 
+auto-increments)
+#define BRKP2L   0xCE   // Breakpoint 2, low byte
+#define BRKP2H   0xCF   // Breakpoint 2, high byte
+#define BRKP3L   0xD2   // Breakpoint 3, low byte
+#define BRKP3H   0xD3   // Breakpoint 3, high byte
+
+// FPCTL codes
+#define INIT_KEY1   0x02        // first key
+#define INIT_KEY2   0x01        // second key
+#define RESUME_EXEC 0x08        // resume code execution
+
+// FPDAT commands
+#define UNKNOWN1     0x01
+#define UNKNOWN2     0x02
+#define DEVICE_ERASE 0x03
+#define FLASH_READ   0x06
+#define FLASH_WRITE  0x07
+#define PAGE_ERASE   0x08
+#define REG_READ     0x09
+#define REG_WRITE    0x0A
+#define RAM_READ     0x0B
+#define RAM_WRITE    0x0C
+
+// C2_ReadData, C2_WriteData, C2_ReadAddr, C2_WriteAddr are just the
+// basic C2 functions, so I won't repeat them here.
+
+U8 C2_ReadReg(U8 reg)
+{
+   C2_WriteAddr(reg);
+   return C2_ReadData();
+}
+void C2_WriteReg(U8 reg, U8 val)
+{
+   C2_WriteAddr(reg);
+   C2_WriteData(val);
+}
+
+void C2_SetBreakpoint0(U16 Addr)
+{
+   C2_WriteReg(BRKP0L, (U8)(Addr == 8));
+   C2_WriteReg(BRKP0H, (U8)Addr | 0x80);
+}
+void C2_ClearBreakpoint0(void)
+{
+   C2_WriteReg(BRKP0L, 0x00);
+}
+void C2_RunUntilBreakpoint(void)
+{
+   // This function resumes code execution on the 'F331 and waits 
+until
+   // a breakpoint it hit.  To indicate it hit a breakpoint, the 
+'F331 causes
+   // a short reset pulse (~116ns when running at 24.5MHz).  I really 
+should
+   // use an interrupt to detect the reset pulse, but this is sample 
+code.
+
+   C2_WriteReg(FPCTL,RESUME_EXEC);
+
+   C2CK_DriverOff();        // stop driving C2CK so we can listen for 
+the /RST
+   while (READ_C2CK());     // wait for /RST to go low (this could 
+take a while)
+   while (!READ_C2CK());    // OK, now wait for /RST to go high (very 
+quick)
+   C2CK_DriverOn();         // back to normal C2 operation
+}
+void C2_RunFor20ms(void)
+{
+   C2_WriteReg(FPCTL,RESUME_EXEC);
+   WaitXms(20);
+   StrobeC2CK();            // stop the 'F331
+}
+
+// this e-mail's getting long, I'll try to compress these functions
+U8 C2_ReadRegBlock(U8 BlockStart, U8 BlockSize, U8 *BufPtr)
+{
+   C2_WriteReg(FPDAT, REG_READ);
+   WaitForInReady();
+   WaitForOutReady();
+   if (C2_ReadData() != COMMAND_OK)
+     return 1;
+   C2_WriteData(BlockStart);
+   WaitForInReady();
+   C2_WriteData(BlockSize);
+   WaitForInReady();
+   do
+   {
+     WaitForOutReady();
+     *BufPtr++ = C2_ReadData();
+   } while (--BlockSize);
+   return 0;
+}
+
+U8 C2_WriteRegBlock(U8 BlockStart, U8 BlockSize, U8 *BufPtr)
+{
+   C2_WriteReg(FPDAT, REG_WRITE);
+   WaitForInReady();
+   WaitForOutReady();
+   if (C2_ReadData() != COMMAND_OK)
+     return 1;
+   C2_WriteData(BlockStart);
+   WaitForInReady();
+   C2_WriteData(BlockSize);
+   WaitForInReady();
+   do
+   {
+     WaitForOutReady();
+     C2_WriteData(*BufPtr++);
+   } while (--BlockSize);
+   return 0;
+}
+
+// C2_ReadRAMBlock and C2_WriteRAMBlock work just
+// like C2_ReadRegBlock and C2_WriteRegBlock
+
+void C2_ReadXRAMBlock(U16 BlockStart, U16 BlockSize, U8 *BufPtr)
+{
+   C2_WriteReg(XRAMAL, (U8)BlockStart);
+   C2_WriteReg(XRAMAH, (U8)(BlockStart == 8));
+
+   // read repeatedly from XRAMD, the address in XRAMA will 
+auto-increment
+   C2_WriteAddr(XRAMD);
+   do
+   {
+     *BufPtr++ = C2_ReadData();
+   } while (--BlockSize);
+}
+
+// C2_WriteXRAMBlock is just like C2_ReadXRAMBlock,
+// just change the C2_ReadData line to use C2_WriteData
+

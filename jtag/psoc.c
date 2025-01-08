@@ -1,0 +1,428 @@
+#include	<8051.h>
+#include	"jtag.h"
+
+/*
+ * 	ISSP interface for Cypress PSoC devices
+ *
+ * 	ISSP connector ports
+ * 	On the JTAG 20 pin connector:
+ *
+ * 	1 - NC
+ * 	2 - +5v (jumpered from USB power)
+ * 	3 - NC
+ * 	4 - GND
+ * 	5 - NC
+ * 	6 - NC
+ * 	7 - XRES  - active high reset - P2.1
+ * 	8 - NC
+ * 	9 - SCLK - clocked on falling edge P2.2
+ * 	10 - NC
+ * 	11 - SDATA - tri-state bi-directional data P2.3
+ *
+ */
+
+#define	XRES	(P2_BITS.B1)
+#define	SCLK	(P2_BITS.B2)
+#define	SDATA	(P2_BITS.B3)
+
+#define	ClkStrobe()	((SCLK = 1), (SCLK = 0))// pulse clock high
+#define	ClkEnable()	((SCLK=0),(P2MDOUT |= (1<<2)))		// set clock driver as push/pull
+#define	ClkDisable()	((P2MDOUT &= ~(1<<2)),(SCLK=1))	// set clock driver as open drain
+#define	DatEnable()	(P2MDOUT |= (1<<3))		// set data driver as push/pull
+#define	DatDisable() ((P2MDOUT &= ~(1<<3)),(SDATA=1))	// set data driver as open drain
+#define	ResEnable() (P2MDOUT |=  (1<<1))	// set reset driver as push pull
+#define	ResDisable() ((P2MDOUT &= ~(1<<1)),(XRES=1))	// set reset driver as open drain
+
+#define	usDelay(n)	_delay(n*24)			// busy delay in microseconds
+
+
+// these are the programming vectors.
+
+static const unsigned char	vec_init_1[50+1] =
+{
+	4,				// number of bits in the last byte
+	0xCA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x0D, 0xEE, 0x01, 0xF7, 0xB0, 0x07, 0x9F, 0x07, 
+	0x5E, 0x7C, 0x81, 0xFD, 0xEA, 0x01, 0xF7, 0xA0, 
+	0x1F, 0x9F, 0x70, 0x1F, 0x7C, 0x98, 0x7D, 0xF4, 
+	0x81, 0xF7, 0x80, 0x4F, 0xDF, 0x00, 0x1F, 0x7F, 
+	0x89, 0x70
+};
+static const unsigned char	vec_init_2[36+1] =
+{
+	6,
+	0xDE, 0xE0, 0x1F, 0x7B, 0x00, 0x79, 0xF0, 0x75, 
+	0xE7, 0xC8, 0x1F, 0xDE, 0xA0, 0x1F, 0x7A, 0x01, 
+	0xF9, 0xF7, 0x01, 0xF7, 0xC9, 0x87, 0xDF, 0x48, 
+	0x1E, 0x7D, 0x00, 0xFD, 0xE0, 0x0D, 0xF7, 0xC0, 
+	0x07, 0xDF, 0xE2, 0x5C
+};
+
+static const unsigned char	vec_init_3_3v[105+1] =
+{
+	4,				// number of bits in the last byte
+	0xDE, 0xE0, 0x1F, 0x7A, 0x01, 0xFD, 0xEA, 0x01, 
+	0xF7, 0xB0, 0x47, 0xDF, 0x0A, 0x3F, 0x7C, 0xFC, 
+	0x7D, 0xF4, 0x61, 0xF7, 0xF8, 0x97, 0x00, 0x00, 
+	0x03, 0x7B, 0x80, 0x7D, 0xE8, 0x07, 0xF7, 0xA8, 
+	0x07, 0xDE, 0xC1, 0x1F, 0x7C, 0x30, 0x7D, 0xF3, 
+	0xD5, 0xF7, 0xD1, 0x87, 0xDE, 0xE2, 0x1F, 0x7F, 
+	0x89, 0x70, 0x00, 0x00, 0x37, 0xB8, 0x07, 0xDE, 
+	0x80, 0x7F, 0x7A, 0x80, 0x7D, 0xEC, 0x11, 0xF7, 
+	0xC2, 0x8F, 0xDF, 0x3F, 0x3F, 0x7D, 0x18, 0x7D, 
+	0xFE, 0x25, 0xC0, 0x00, 0x00, 0xDE, 0xE0, 0x1F, 
+	0x7A, 0x01, 0xFD, 0xEA, 0x01, 0xF7, 0xB0, 0x47, 
+	0xDF, 0x0C, 0x1F, 0x7C, 0xF4, 0x7D, 0xF4, 0x61, 
+	0xF7, 0xB8, 0x87, 0xDF, 0xE2, 0x5C, 0x00, 0x00, 
+	0x00
+};
+
+static const unsigned char	vec_init_3_5v[105+1] =
+{
+	4,				// number of bits in the last byte
+	0xDE, 0xE0, 0x1F, 0x7A, 0x01, 0xFD, 0xEA, 0x01, 
+	0xF7, 0xB0, 0x47, 0xDF, 0x0A, 0x3F, 0x7C, 0xFE, 
+	0x7D, 0xF4, 0x61, 0xF7, 0xF8, 0x97, 0x00, 0x00, 
+	0x03, 0x7B, 0x80, 0x7D, 0xE8, 0x07, 0xF7, 0xA8, 
+	0x07, 0xDE, 0xC1, 0x1F, 0x7C, 0x30, 0x7D, 0xF3, 
+	0xD5, 0xF7, 0xD1, 0x87, 0xDE, 0xE2, 0x1F, 0x7F, 
+	0x89, 0x70, 0x00, 0x00, 0x37, 0xB8, 0x07, 0xDE, 
+	0x80, 0x7F, 0x7A, 0x80, 0x7D, 0xEC, 0x11, 0xF7, 
+	0xC2, 0x8F, 0xDF, 0x3F, 0xBF, 0x7D, 0x18, 0x7D, 
+	0xFE, 0x25, 0xC0, 0x00, 0x00, 0xDE, 0xE0, 0x1F, 
+	0x7A, 0x01, 0xFD, 0xEA, 0x01, 0xF7, 0xB0, 0x47, 
+	0xDF, 0x0C, 0x1F, 0x7C, 0xF4, 0x7D, 0xF4, 0x61, 
+	0xF7, 0xB8, 0x87, 0xDF, 0xE2, 0x5C, 0x00, 0x00, 
+	0x00
+};
+
+static const unsigned char	vec_id_setup[42+1] =
+{	2,
+	0xDE, 0xE2, 0x1F, 0x70, 0x01, 0x7D, 0xEE, 0x01, 
+	0xF7, 0xB0, 0x07, 0x9F, 0x07, 0x5E, 0x7C, 0x81, 
+	0xFD, 0xEA, 0x01, 0xF7, 0xA0, 0x1F, 0x9F, 0x70, 
+	0x1F, 0x7C, 0x98, 0x7D, 0xF4, 0x81, 0xE7, 0xD0, 
+	0x07, 0xDE, 0x00, 0xDF, 0x7C, 0x00, 0x7D, 0xFE, 
+	0x25, 0xC0
+};
+static const unsigned char	vec_erase[39+1] =
+{
+	4,
+	0x9F, 0x82, 0xBE, 0x7F, 0x2B, 0x7D, 0xEE, 0x01, 
+	0xF7, 0xB0, 0x07, 0x9F, 0x07, 0x5E, 0x7C, 0x81, 
+	0xFD, 0xEA, 0x01, 0xF7, 0xA0, 0x1F, 0x9F, 0x70, 
+	0x1F, 0x7C, 0x98, 0x7D, 0xF4, 0x81, 0xF7, 0x80, 
+	0x2F, 0xDF, 0x00, 0x1F, 0x7F, 0x89, 0x70
+};
+
+
+static const unsigned char	vec_program[39+1] =
+{
+	4,				// number of bits in the last byte
+//	0x9F, 0x8A, 0x9E, 0x7F, 0x2B, 0x7D, 0xEE, 0x01,
+	0x00, 0x00, 0x02, 0x7F, 0x2B, 0x7D, 0xEE, 0x01,
+	0xF7, 0xB0, 0x07, 0x9F, 0x07, 0x5E, 0x7C, 0x81,
+	0xFD, 0xEA, 0x01, 0xF7, 0xA0, 0x1F, 0x9F, 0x70,
+	0x1F, 0x7C, 0x98, 0x7D, 0xF4, 0x81, 0xF7, 0x80,
+	0x17, 0xDF, 0x00, 0x1F, 0x7F, 0x89, 0x70
+
+};
+
+static const unsigned char	vec_verify_setup[33+1] =
+{
+	8,				// number of bits in the last byte
+	0xDE, 0xE0, 0x1F, 0x7B, 0x00, 0x79, 0xF0, 0x75, 
+	0xE7, 0xC8, 0x1F, 0xDE, 0xA0, 0x1F, 0x7A, 0x01, 
+	0xF9, 0xF7, 0x01, 0xF7, 0xC9, 0x87, 0xDF, 0x48, 
+	0x1F, 0x78, 0x00, 0xFD, 0xF0, 0x01, 0xF7, 0xF8, 
+	0x97, 
+};
+
+/*
+static const unsigned char	vec_secure
+
+static const unsigned char	vec_checksum_setup */ 
+
+
+static bit flash_inited;		// if we have initialized flash programming
+
+#define	send_vector(vec)	send_bits(vec, sizeof vec)
+
+static void
+psoc_reset(void)
+{
+	DatDisable();
+	ClkEnable();
+	SCLK = 0;
+	ResEnable();
+	XRES = 1;		// drive reset
+	usDelay(500);
+	XRES = 0;
+	flash_inited = FALSE;
+}
+
+static void
+psoc_send(unsigned char v, unsigned char i)
+{
+	do {
+		if(v & 0x80)
+			SDATA = 1;
+		else
+			SDATA = 0;
+		v <<= 1;
+		ClkStrobe();
+	} while(--i != 0);
+}
+
+
+// send a bit stream to the device. The first byte in the table is
+// the number of bits in the last byte
+static void
+send_bits(const unsigned char * data, unsigned char cnt)
+{
+	unsigned char	last, i;
+
+	DatEnable();
+	usDelay(1);
+	last = *data++;
+	cnt--;
+	for(;;) {
+		i = *data++;
+		if(--cnt == 0) {
+			psoc_send(i, last);
+			break;
+		}
+		psoc_send(i, 8);
+	}
+}
+
+// wait for a high-to-low transition on SDATA
+// returns true if successful
+
+static BOOL
+wait_busy(void)
+{
+	unsigned char	i;
+
+	DatDisable();
+	SDATA = 1;		// allow to float
+	usDelay(2);
+	ClkStrobe();
+	SET_TIMEOUT(500);
+	// wait for SDATA to be high
+	while(!SDATA)
+		if(TIMEDOUT())
+			return FALSE;
+	// wait for SDATA to fall
+	while(SDATA)
+		if(TIMEDOUT())
+			return FALSE;
+	DatEnable();
+	i = 5;
+	do
+		psoc_send(0, 8);
+	while(--i != 0);
+	return TRUE;
+}
+
+static reentrant BOOL
+psoc_disconnect(void)
+{
+	psoc_reset();		// reset chip
+	DatDisable();
+	SDATA = 1;
+	ClkDisable();
+	SCLK = 1;
+	ResDisable();
+	
+	return TRUE;
+}
+
+static unsigned char
+psoc_read(unsigned char addr)
+{
+	unsigned char	cnt;
+
+	SDATA = 0;
+	DatEnable();
+	psoc_send(0b10100000, 3);
+	psoc_send(addr, 8);
+	DatDisable();
+	ClkStrobe();
+	cnt = 8;
+	do {
+		ClkStrobe();
+		addr <<= 1;
+		if(SDATA)
+			addr++;
+	} while(--cnt != 0);
+	ClkStrobe();
+	SDATA = 1;
+	DatEnable();
+	ClkStrobe();
+	return addr;
+}
+
+static void
+psoc_write(unsigned char addr, unsigned char data)
+{
+	unsigned char	cnt;
+
+	SDATA = 0;
+	DatEnable();
+	psoc_send(0b10000000, 3);
+	psoc_send(addr, 8);
+	psoc_send(data, 8);
+	psoc_send(0b11100000, 3);
+}
+
+// connect the target device, get device ID
+
+static reentrant BOOL
+psoc_connect(void)
+{
+	unsigned char i;
+
+	XBR1 |= 0x80;		// disable weak pullups
+	psoc_reset();		// reset chip
+	usDelay(2);
+	ClkEnable();
+	send_vector(vec_init_1);
+	if(!wait_busy()) {
+		psoc_disconnect();
+		return FALSE;
+	}
+	send_vector(vec_init_2);
+	if(!wait_busy()) {
+		psoc_disconnect();
+		return FALSE;
+	}
+	send_vector(vec_init_3_5v);		// assume 5V here....
+	send_vector(vec_id_setup);
+	if(!wait_busy()) {
+		psoc_disconnect();
+		return FALSE;
+	}
+	dev_id = psoc_read(0xF8) << 8;
+	dev_id |= psoc_read(0xF9);
+	return TRUE;
+}
+
+// erase the entire device memory
+
+static reentrant BOOL
+psoc_deviceErase(void)
+{
+	unsigned char status;
+
+	send_vector(vec_erase);
+	if(!wait_busy()) {
+		psoc_disconnect();
+		return FALSE;
+	}
+	return TRUE;
+}
+
+// select a bank and block number
+static void
+set_block(unsigned int blockno)
+{
+	// select the bank number. There are 128 blocks to a bank.
+	psoc_send(0xDE, 8);
+	psoc_send(0xE2, 8);
+	psoc_send(0x1F, 8);
+	psoc_send(0x7D, 8);
+	psoc_send(0x0, 1);
+	psoc_send(blockno/128, 8);
+	psoc_send(0xFB, 8);
+	psoc_send(0xDC, 8);
+	psoc_send(0x03, 8);
+	psoc_send(0x80, 1);
+	// select the block number within the bank.
+
+	blockno %= 128;
+	psoc_send(0x9F, 8);
+	psoc_send(0x40, 3);
+	psoc_send(blockno, 8);
+	psoc_send(0xE0, 3);
+}
+
+
+// Read memory
+// We assume that len is <= 64 the block does not cross a 64 byte boundary
+
+static reentrant BOOL
+psoc_readmem(unsigned char xdata * p, unsigned char len, unsigned long addr, unsigned char mem)
+{
+	unsigned char idx, tlen;
+
+	switch(mem) {
+
+	case JT_PROGMEM:
+		set_block(addr/64);
+		send_vector(vec_verify_setup);
+		if(!wait_busy()) {
+			psoc_disconnect();
+			return FALSE;
+		}
+		tlen = len;
+		if(tlen > 64)
+			tlen = 64;
+		idx = addr & 63;
+		idx |= 0x80;
+		while(tlen != 0) {
+			*p++ = psoc_read(idx++);
+			tlen--;
+		}
+		return TRUE;
+
+	case JT_SFR:
+	case JT_DATAMEM:
+		return FALSE;
+
+	}
+	return FALSE;
+}
+
+// Program flash memory
+
+static reentrant BOOL
+psoc_writemem(unsigned char xdata * p, unsigned char len, unsigned long addr, unsigned char mem)
+{
+	unsigned char idx, tlen;
+	if(mem == JT_PROGMEM) {
+		// load the data into the RAM on the chip
+		tlen = len;
+		if(tlen > 64)
+			tlen = 64;
+		idx = addr & 63;
+		idx |= 0x80;
+		while(tlen != 0) {
+			psoc_write(idx++, *p++);
+			tlen--;
+		}
+		set_block(addr/64);
+		psoc_write(0xFC, 0x54/2);
+		send_vector(vec_program);
+		if(!wait_busy()) {
+			psoc_disconnect();
+			return FALSE;
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+
+const dev_int 	si_psoc =
+{
+	JT_PSOC,
+	psoc_connect,
+	psoc_deviceErase,
+	psoc_disconnect,
+	psoc_writemem,
+	psoc_readmem,
+};
+
+
+

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="bulkdrive" default="export.platform" basedir=".">
+
+	<import file="../../build/build_eproperties.ent"/>
+	<property
+		name="feature.dir"
+		value="../../com.htsoft.hitide.feature"/>
+
+	<target name="export.feature.os">
+		<copy todir="${feature.dir}/os/${dest.dir}/">
+			<fileset dir="." includes="*.sys,*.inf,*.cat"/>
+		</copy>
+	</target>
+
+	<target name="export.feature">
+		<antcall target="export.feature.os"
+			inheritall="false"
+			inheritrefs="false">
+			<param name="platform.os" value="windows"/>
+			<param name="dest.dir" value="win32/x86"/>
+		</antcall>
+	</target>
+
+	<target name="export.platform">
+		<!-- Copy JTAG USB drivers -->
+		<mkdir dir="${platform.install.dir}/drivers"/>
+		<copy todir="${platform.install.dir}/drivers">
+			<fileset dir="." includes="*.sys,*.inf,*.cat"/>
+		</copy>
+	</target>
+</project>

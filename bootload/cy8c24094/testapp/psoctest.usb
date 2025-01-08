@@ -1,0 +1,44 @@
+;	USB descriptors for HI-TECH Bootload device.
+
+DEVICE=psoctest
+USB=1.1
+CLASS=0,0,0
+; The Cypress chip only supports 8 byte packets on endpoint 0.
+PACKETSIZE=8
+VID=0x1725
+PID=0x0003
+;version number; high nibble identifies the family - currently 0->C8051F320, 1->CY8C24x94
+RELEASE=0x1201
+MANUFACTURER=HI-TECH Software
+PRODUCT=USB Firmware upgrade
+;SERIAL=
+
+; Configuration info
+
+CONFIG=Default
+POWER=bus,100
+WAKEUP=no
+
+; Interface info
+
+INTERFACE=Bootload
+; DFU class
+CLASS=0xFF, 0xFF, 0
+
+ENDPOINT=1
+DIR=out
+TYPE=bulk
+PACKETSIZE=64
+ENDENDPOINT
+
+ENDPOINT=2
+DIR=in
+TYPE=bulk
+PACKETSIZE=64
+ENDENDPOINT
+
+
+ENDINTERFACE
+ENDCONFIG
+ENDDEVICE
+

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="linuxdrive" default="export.feature" basedir=".">
+	<import file="../../build/build_c.ent"/>
+	
+	<property name="build.result" value="htusb"/>	
+	
+	<property
+		name="feature.dir"
+		value="../../com.htsoft.hitide.feature"/>
+
+	<target name="export.feature.os" depends="build">
+		<echo message="${build.result}${exec.extension}"/>
+		<copy todir="${feature.dir}/os/${dest.dir}/">
+			<fileset dir=".">
+				<include name="${build.result}${exec.extension}"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="export.feature">
+		<antcall target="export.feature.os"
+			inheritall="false"
+			inheritrefs="false">
+			<param name="platform.os" value="linux"/>
+			<param name="dest.dir" value="linux/x86"/>
+		</antcall>
+		<antcall target="export.feature.os"
+			inheritall="false"
+			inheritrefs="false">
+			<param name="platform.os" value="linux64"/>
+			<param name="dest.dir" value="linux/x86_64"/>
+		</antcall>
+	</target>
+
+	<target name="export.platform" depends="build">
+		<!-- Copy result -->
+		<mkdir dir="${platform.install.dir}/bin"/>
+		<copy file="build/${c.os}/${build.result}${exec.extension}"
+			todir="${platform.install.dir}/bin"/>
+		<chmod file="${platform.install.dir}/bin/${build.result}${exec.extension}"
+				perm="ugo+rx"/>
+	</target>
+</project>

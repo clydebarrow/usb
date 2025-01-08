@@ -1,0 +1,19 @@
+# DO NOT DELETE
+./obj/bootload.p1 : 
+./obj/lcd.p1 :  C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8c.h\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\lcd.h
+./obj/main.p1 :  C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8c.h\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\bootload.h\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\lcd.h
+./obj/usbx94.p1 :  C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8c.h\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\bootload.h\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\lcd.h
+./obj/boot.obj :  C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8c.inc\
+   C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8ssc.inc\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\lib\G9FLE9~Y.INC\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\memory.inc
+./lib/obj/psocconfig.obj :  ./lib/G9FLE9~Y.INC\
+   C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8c.inc\
+   N:\vkumar\nz\usb\bootload\CVW11I~3\usbbl\memory.inc
+./lib/obj/psocconfigtbl.obj : \
+   C:/PROGRA~1/CYPRES~1/PSOCDE~1/tools/include/CY8C24~2/m8c.inc

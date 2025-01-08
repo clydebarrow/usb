@@ -1,0 +1,3 @@
+-H+./output/usbbl.sym -M./output/usbbl.map -O./output/usbbl.obj 
+ ./obj/bootload.p1 ./obj/lcd.p1 ./obj/main.p1 ./obj/usbx94.p1   
+ N:/vkumar/nz/usb/bootload/CVW11I~3/usbbl/lib/libpsoc.lib N:/vkumar/nz/usb/bootload/CVW11I~3/usbbl/lib/libpsoc.lpp C:\PROGRA~1\HI-TEC~1\HCPSOC\PRO\9.60/lib/psoc-c.lib  

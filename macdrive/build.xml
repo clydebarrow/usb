@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="macdrive" default="export.feature" basedir=".">
+	<import file="../../build/build_c.ent"/>
+	<import file="../../build/build_remoteosx.ent"/>
+	
+	<property name="build.result" value="htusb"/>	
+	
+	<property
+		name="feature.dir"
+		value="../../com.htsoft.hitide.feature"/>
+
+	<target name="export.feature.os" depends="build">
+		<echo message="${build.result}${exec.extension}"/>
+		<copy todir="${feature.dir}/os/${dest.dir}/">
+			<fileset dir=".">
+				<include name="${build.result}${exec.extension}"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="export.feature">
+		<antcall target="export.feature.os"
+			inheritall="false"
+			inheritrefs="false">
+			<param name="platform.os" value="macosx"/>
+			<param name="dest.dir" value="macosx"/>
+		</antcall>
+	</target>
+
+	<target name="export.platform.remote">
+		<description>
+		This target copies the necessary files from this workspace to Merlin
+		(Mac OSX maching) to compile the native library. Once the files are
+		on Merlin the library is built and the library is copied back to
+		the macosx fragment.
+		</description>
+		<property name="macdrive.dir" value="usb/macdrive"/>
+		<sshcmd command="mkdir -p ${griffon.temp.dir}"/>
+		<sshsend dirs="../../build ../../usb"/>
+		<remote-macosx-ant args="-f ${griffon.temp.dir}/${macdrive.dir}/build.xml export.platform"/>
+		<sshget srcdir="${macdrive.dir}/" destdir="."/>
+	</target>
+	<target name="export.platform" depends="build">
+		<!-- Copy result -->
+		<mkdir dir="${platform.install.dir}/bin"/>
+		<copy file="${build.result}${exec.extension}"
+			todir="${platform.install.dir}/bin"/>
+		<chmod file="${platform.install.dir}/bin/${build.result}${exec.extension}"
+				perm="ugo+rx"/>
+	</target>
+</project>

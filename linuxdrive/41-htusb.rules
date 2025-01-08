@@ -1,0 +1,5 @@
+#Change permission of HI-TECH C JTAG Debug Interface
+#when connected. Permission is modified to be group
+#writable.
+
+DRIVERS=="usb", ATTRS{idProduct}=="0002", ATTRS{idVendor}=="1725",	MODE="0666"

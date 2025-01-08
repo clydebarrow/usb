@@ -4,20 +4,15 @@
 
 .SUFFIXES:
 .SUFFIXES:	.c .obj .as .usb
--include ~/.htdefaults.mk
-ifdef	INSTALL_DIR
-HITECH=$(shell echo $(INSTALL_DIR) | sed 's^/bin^^' )
-else
-HITECH	= /usr/hitech
-endif
-BIN	= $(HITECH)/bin
-LIB	= $(HITECH)/lib
-AR	= $(BIN)/libr r
-C	= $(BIN)/c51
-AS	= $(BIN)/c51
+
+PWD = $(shell pwd)
+DOCKER = docker run --rm -it --platform linux/386 -v$(PWD):/home/user/project clydeps/c51:latest
+C	= $(DOCKER) c51
+AS	= $(DOCKER) c51
+FIRMWARE = firmware
 ASFLAGS	= -P
 CHIP=c8051f320
-USBCONFIG=../../utils/usbconfig
+USBCONFIG=usbconfig
 
 
 #define the base of the application program. The bootloader must reside
@@ -57,7 +52,7 @@ all:	  bootload.hex
 
 bootload.hex:	$(OBJS)
 	$(C) --chip=$(CHIP) -obootload.hex -mbootload.map $(OBJS)
-	firmware -c0 -v$(HVERS) -p320 bootload.hex >bootload.fmw
+	$(FIRMWARE) -c0 -v$(HVERS) -p320 bootload.hex >bootload.fmw
 
 
 srclist:

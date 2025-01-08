@@ -1,0 +1,10 @@
+*.fmw
+*.hex
+*.log
+*.lst
+*.map
+*.obj
+*.omf
+*.rlf
+*.sdb
+*.sym

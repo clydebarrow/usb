@@ -440,11 +440,11 @@ CLK_start(void)
 
 /* process endpoint 0 (setup) packets */
 
-reentrant void
+reentrant unsigned char
 USB_control(void)
 {
 	unsigned char			packet[REQ_SIZE];
-	unsigned char			idx;
+	unsigned char			idx, req;
 	unsigned int			cnt;
 USB_CONST unsigned char *	sp;	// string pointer
 
@@ -473,7 +473,8 @@ USB_CONST unsigned char *	sp;	// string pointer
 			proglog(packet[idx]);
 		} while(++idx != sizeof packet);
 		idx = packet[REQ_INDEX] & 15;
-		switch(packet[REQ_REQ]) {
+        req = packet[REQ_REQ];
+		switch(req) {
 
 		case SET_ADDRESS:
 			USB_write(FADDR, packet[REQ_VALUE]);
@@ -506,7 +507,7 @@ USB_CONST unsigned char *	sp;	// string pointer
 				}
 				break;
 			}
-			addlog(0xFF, GET_DESCRIPTOR, packet[REQ_REQ], cnt);
+			addlog(0xFF, GET_DESCRIPTOR, req, cnt);
 			if(sp) {
 				if(cnt > packet[REQ_LENGTH] + (packet[REQ_LENGTH+1]<< 8))
 					cnt = packet[REQ_LENGTH] + (packet[REQ_LENGTH+1]<< 8);
@@ -617,6 +618,7 @@ USB_CONST unsigned char *	sp;	// string pointer
 		printf("%2.2X ", packet[idx]);
 	putch('\n');
 #endif
+    return req;
 }
 
 static void interrupt reentrant

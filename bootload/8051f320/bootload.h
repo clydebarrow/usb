@@ -46,7 +46,7 @@ typedef struct
  * 	Copyright (C) 2005 HI-TECH Software Pty. Ltd.
  */
 
-//	USB protocol definitions
+//	USB control commands
 
 #define	GET_STATUS		0x00
 #define	CLEAR_FEATURE	0x01
@@ -59,6 +59,7 @@ typedef struct
 #define	GET_INTERFACE	0x0A
 #define	SET_INTERFACE	0x0B
 #define	SYNCH_FRAME		0x0C
+
 
 // Class-specific requests
 
@@ -151,9 +152,9 @@ extern reentrant void USB_init(USB_descriptor_table USB_CONST * table);
 // detach from the USB bus. Must call USB_init again before can use the USB
 extern reentrant void USB_detach(void);
 
-// handle endpoint 0
+// handle endpoint 0. Returns the command
 
-extern reentrant void USB_control(void);
+extern reentrant unsigned char USB_control(void);
 
 // read a block of data from the specified endpoint
 extern reentrant unsigned short USB_read_packet(unsigned char index, unsigned char xdata * ptr, unsigned short cnt);
